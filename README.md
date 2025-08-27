@@ -4,12 +4,12 @@ A personalized movie recommendation web application powered by Shaped AI, featur
 
 ## 🚀 Live Demo
 
-[View Live App](https://shaped-movie-rec-qc0vg50zb-akriti.vercel.app)
+[View Live App](https://shaped-movie-rec-bj5k74w6t-akriti.vercel.app)
 
 ## ✨ Features
 
 - **User Authentication**: Google OAuth integration via Firebase
-- **Movie Discovery**: Browse MovieLens dataset with search and genre filtering
+- **Movie Discovery**: Browse MovieLens dataset with search and genre filtering  
 - **Personalized Feed**: "For You" page with Shaped AI-powered recommendations
 - **Engagement Tracking**: Upvote movies to improve personalization
 - **Real-time Learning**: Every upvote is sent to Shaped API for model improvement
@@ -17,7 +17,7 @@ A personalized movie recommendation web application powered by Shaped AI, featur
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
-- **Authentication**: Firebase Auth
+- **Authentication**: Firebase Auth with Google OAuth
 - **AI/ML**: Shaped AI API for personalized recommendations
 - **Data**: MovieLens "small" dataset
 - **Deployment**: Vercel
@@ -49,6 +49,14 @@ SHAPED_DATASET_ID=your_dataset_id
 SHAPED_MODEL_ID=your_model_id
 ```
 
+### Firebase Setup
+
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Create a new project or select existing
+3. Enable Google Authentication
+4. Get your Firebase config values
+5. Add your Vercel domains to authorized domains
+
 ### Installation
 
 ```bash
@@ -58,50 +66,60 @@ npm install
 npm run dev
 ```
 
-## 📊 Shaped AI Setup
+## 📊 Shaped AI Integration
 
-### 1. Create Dataset
-- Upload `ratings.csv` to Shaped
-- Columns: `user_id`, `item_id`, `rating`, `timestamp`
-- Treat ratings ≥4.0 as positive interactions
+### Dataset Structure
+- Uses MovieLens ratings data mapped to user interactions
+- Positive interactions: ratings ≥ 4.0 or explicit upvotes
+- Real-time learning from user engagement
 
-### 2. Train Model
-- Use the dataset to train a personalization model
-- Model learns from user upvotes to rank movies
+### API Endpoints
+- **POST** `/api/interactions` - Send user upvotes to Shaped
+- **GET** `/api/recommendations` - Get personalized movie rankings
+- **GET** `/api/status` - Check Shaped API connectivity
 
-### 3. API Integration
-- App sends real-time upvotes to Shaped
-- "For You" page uses `/rank` endpoint for personalized results
+## 🎯 Core Features
 
-## 🎯 Core Requirements Met
+✅ **User Authentication**: Google OAuth with Firebase (exceeds simple username requirement)  
+✅ **MovieLens Dataset**: Complete integration with movie titles and genres  
+✅ **Engagement Tracking**: Upvote system for preference learning  
+✅ **Personalized Recommendations**: Shaped AI-powered "For You" feed  
+✅ **Real-time Learning**: Immediate model updates from user interactions  
+✅ **Public Deployment**: Live on Vercel with proper domain configuration
 
-✅ **User Authentication**: Firebase OAuth (exceeds simple username requirement)  
-✅ **MovieLens Dataset**: Complete integration with title + genres  
-✅ **Engagement Tracking**: Upvote system mapped to ratings ≥4  
-✅ **Personalized Feed**: Shaped AI integration with real-time learning  
-✅ **Public Deployment**: Hosted on Vercel with live URL  
+## 📱 User Flow
 
-## 🔧 API Endpoints
+1. **Authentication**: Sign in with Google account via Firebase
+2. **Discovery**: Browse movies on Discover page with search/filtering
+3. **Engagement**: Upvote movies to indicate preferences
+4. **Personalization**: View tailored recommendations on "For You" page
+5. **Learning**: System improves recommendations with each interaction
 
-- `/api/interactions` - Send user upvotes to Shaped
-- `/api/recommendations` - Get personalized movie rankings
-- `/api/status` - Check Shaped API health
+## 🔧 Technical Implementation
 
-## 📱 Usage
-
-1. **Sign in** with Google account
-2. **Browse movies** on Discover page
-3. **Upvote** movies you like
-4. **View personalized** recommendations on "For You" page
-5. **Watch as** recommendations improve with more interactions
+- **Client-side**: React components with Tailwind CSS styling
+- **Server-side**: Next.js API routes for Shaped AI integration
+- **Authentication**: Firebase handles OAuth flow and user sessions
+- **Data Flow**: User interactions → API routes → Shaped AI → Updated recommendations
 
 ## 🚀 Deployment
 
-The app is automatically deployed to Vercel on every push to main branch.
+Deployed on Vercel with:
+- Automatic deployments from main branch
+- Environment variables configured in Vercel dashboard
+- Multiple Vercel domains authorized in Firebase for OAuth
+
+## 🔑 Firebase Domain Authorization
+
+For OAuth to work, add these Vercel domains to Firebase:
+- `shaped-movie-rec-bj5k74w6t-akriti.vercel.app`
+- `shaped-movie-rec-app.vercel.app`
+- `shaped-movie-rec-app-git-main-akriti.vercel.app`
+- `shaped-movie-rec-app-akriti.vercel.app`
 
 ## 🤝 Contributing
 
-This is a take-home assignment project. Feel free to fork and experiment!
+This project demonstrates modern web development practices with AI integration. Fork and experiment with different recommendation approaches!
 
 ## 📄 License
 
