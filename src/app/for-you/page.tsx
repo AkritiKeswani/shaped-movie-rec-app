@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MovieCard } from '@/components/MovieCard';
 import { Navigation } from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,69 @@ export default function ForYou() {
   const [isLoading, setIsLoading] = useState(true);
   const [upvotedMovies, setUpvotedMovies] = useState<Set<number>>(new Set());
   const [upvoting, setUpvoting] = useState<Set<number>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Hybrid reranker: blend Shaped scores with upvote boosts for instant UX
+  const reRankMoviesByUpvotes = useCallback((movies: Movie[], upvotedIds: Set<number>): Movie[] => {
+    if (upvotedIds.size === 0) {
+      return movies; // No upvotes, return original order
+    }
+
+    // Get upvoted movies and their genres for affinity scoring
+    const upvotedMovies = movies.filter(m => upvotedIds.has(m.id));
+    const upvotedGenres = new Set<string>();
+    upvotedMovies.forEach(movie => {
+      movie.genres.forEach(genre => upvotedGenres.add(genre));
+    });
+    
+    // Debug: Log what genres we're boosting
+    console.log('🎯 Upvote-based genre boosting:', {
+      upvotedMovies: upvotedMovies.map(m => ({ id: m.id, title: m.title, genres: m.genres })),
+      upvotedGenres: Array.from(upvotedGenres),
+      totalMovies: movies.length
+    });
+
+    // Apply hybrid scoring: combine base scores with upvote boosts
+    const personalizedMovies = movies.map(movie => {
+      // Start with the movie's base score (from Shaped or default)
+      const baseScore = movie.score || movie.blendedScore || 1.0;
+      
+      // Boost upvoted movies significantly (immediate feedback)
+      const upvoteBoost = upvotedIds.has(movie.id) ? 0.25 : 0;
+      
+      // Boost movies with similar genres (soft affinity)
+      let genreBoost = 0;
+      if (movie.genres) {
+        const genreOverlap = movie.genres.filter(genre => upvotedGenres.has(genre)).length;
+        genreBoost = Math.min(genreOverlap * 0.05, 0.15); // Cap genre boost
+      }
+      
+      // Blend scores: Shaped's AI + user preferences
+      const blendedScore = baseScore + upvoteBoost + genreBoost;
+      
+      // Debug logging for genre boosting
+      if (genreBoost > 0) {
+        console.log(`🎭 Genre boost for "${movie.title}":`, {
+          movieGenres: movie.genres,
+          upvotedGenres: Array.from(upvotedGenres),
+          genreOverlap: movie.genres.filter(genre => upvotedGenres.has(genre)).length,
+          genreBoost,
+          baseScore,
+          blendedScore
+        });
+      }
+      
+      return { 
+        ...movie, 
+        blendedScore,
+        upvoteBoost,
+        genreBoost
+      };
+    });
+    
+    // Sort by blended score (upvoted movies float to top)
+    return personalizedMovies.sort((a, b) => (b.blendedScore || 0) - (a.blendedScore || 0));
+  }, []);
 
   // Load movies and get personalized recommendations
   useEffect(() => {
@@ -24,6 +87,31 @@ export default function ForYou() {
       try {
         // Load movies from u.item file with proper genre parsing
         const moviesFromItemFile = await MovieLensDataService.loadMoviesFromItemFile();
+        
+        // Debug: Check Blade Runner specifically
+        const bladeRunner = moviesFromItemFile.find(m => m.title.includes('Blade Runner'));
+        if (bladeRunner) {
+          console.log('🔍 BLADE RUNNER IN FRONTEND:', {
+            id: bladeRunner.id,
+            title: bladeRunner.title,
+            genres: bladeRunner.genres
+          });
+        }
+        
+        console.log('🎬 Frontend: Loaded movies from u.item:', moviesFromItemFile.slice(0, 3).map(m => ({
+          id: m.id,
+          title: m.title,
+          genres: m.genres
+        })));
+        
+        // Debug: Check if genres are actually arrays
+        console.log('🎭 Genre debugging:', {
+          sampleMovie: moviesFromItemFile[0],
+          genresType: typeof moviesFromItemFile[0]?.genres,
+          genresIsArray: Array.isArray(moviesFromItemFile[0]?.genres),
+          genresLength: moviesFromItemFile[0]?.genres?.length,
+          sampleGenres: moviesFromItemFile[0]?.genres
+        });
         
         // Transform to match our Movie interface
         const transformedMovies: Movie[] = moviesFromItemFile.map(movie => ({
@@ -35,6 +123,12 @@ export default function ForYou() {
           rating: 0,
           upvotes: 0
         }));
+        
+        console.log('🔄 Frontend: Transformed movies:', transformedMovies.slice(0, 3).map(m => ({
+          id: m.id,
+          title: m.title,
+          genres: m.genres
+        })));
 
         // Always keep the original full dataset
         setAllMovies(transformedMovies);
@@ -48,8 +142,8 @@ export default function ForYou() {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                userId: user.uid,
-                limit: 50
+                userId: user.uid
+                // Removed hardcoded limit - let Shaped return natural number of recommendations
               })
             });
 
@@ -59,8 +153,10 @@ export default function ForYou() {
               
               if (recData.success && recData.recommendations && recData.recommendations.length > 0) {
                 // Reorder movies based on Shaped recommendations
-                const recommendedIds = new Set(recData.recommendations.map((r: any) => parseInt(r.item_id)));
+                const recommendedIds = new Set(recData.recommendations.map((r: { item_id: string }) => parseInt(r.item_id)));
                 console.log('Shaped recommended IDs:', Array.from(recommendedIds));
+                console.log('Shaped recommendations count:', recData.recommendations.length);
+                console.log('Shaped recommendations data:', recData.recommendations);
                 
                 // Store the personalized movie IDs for display
                 setPersonalizedMovieIds(new Set(Array.from(recommendedIds).map(id => Number(id))));
@@ -72,21 +168,28 @@ export default function ForYou() {
                 console.log(`Found ${recommendedMovies.length} recommended movies:`, recommendedMovies.map(m => ({ id: m.id, title: m.title })));
                 console.log(`Other movies: ${otherMovies.length}`);
                 
-                // Show recommended movies first, then others
-                setDisplayMovies([...recommendedMovies, ...otherMovies]);
-                console.log(`Personalized: ${recommendedMovies.length} recommended, ${otherMovies.length} other movies`);
+                // NEW: Apply upvote-based re-ranking to recommended movies
+                const personalizedRecommendedMovies = reRankMoviesByUpvotes(recommendedMovies, upvotedMovies);
+                const personalizedOtherMovies = reRankMoviesByUpvotes(otherMovies, upvotedMovies);
+                
+                // Show personalized recommended movies first, then personalized other movies
+                setDisplayMovies([...personalizedRecommendedMovies, ...personalizedOtherMovies]);
+                console.log(`🎯 Personalized: ${personalizedRecommendedMovies.length} recommended, ${personalizedOtherMovies.length} other movies (re-ranked by upvotes)`);
               } else {
-                console.log('No personalized recommendations, showing all movies');
+                console.log('No personalized recommendations, showing all movies re-ranked by upvotes');
                 setPersonalizedMovieIds(new Set());
-                setDisplayMovies(transformedMovies);
+                const personalizedAllMovies = reRankMoviesByUpvotes(transformedMovies, upvotedMovies);
+                setDisplayMovies(personalizedAllMovies);
               }
             } else {
-              console.log('Recommendations API error, showing all movies');
-              setDisplayMovies(transformedMovies);
+              console.log('Recommendations API error, showing all movies re-ranked by upvotes');
+              const personalizedAllMovies = reRankMoviesByUpvotes(transformedMovies, upvotedMovies);
+              setDisplayMovies(personalizedAllMovies);
             }
           } catch (error) {
             console.error('Error getting recommendations:', error);
-            setDisplayMovies(transformedMovies);
+            const personalizedAllMovies = reRankMoviesByUpvotes(transformedMovies, upvotedMovies);
+            setDisplayMovies(personalizedAllMovies);
           }
         } else {
           setDisplayMovies(transformedMovies);
@@ -107,10 +210,19 @@ export default function ForYou() {
     if (user) {
       const savedUpvotes = localStorage.getItem(`movielens_upvotes_${user.uid}`);
       if (savedUpvotes) {
-        setUpvotedMovies(new Set(JSON.parse(savedUpvotes)));
+        const upvotedIds = new Set<number>(JSON.parse(savedUpvotes).map((id: unknown) => Number(id)));
+        setUpvotedMovies(upvotedIds);
       }
     }
   }, [user]);
+
+  // Re-rank movies whenever upvotes or allMovies change
+  useEffect(() => {
+    if (allMovies.length > 0 && upvotedMovies.size > 0) {
+      const personalizedMovies = reRankMoviesByUpvotes(allMovies, upvotedMovies);
+      setDisplayMovies(personalizedMovies);
+    }
+  }, [allMovies, upvotedMovies, reRankMoviesByUpvotes]);
 
   // Filter movies based on search and genre
   useEffect(() => {
@@ -129,7 +241,16 @@ export default function ForYou() {
     }
     
     if (selectedGenre !== 'all') {
+      console.log('🎭 Filtering by genre:', selectedGenre);
+      console.log('🎭 Sample movie genres before filter:', filtered.slice(0, 3).map(m => ({ title: m.title, genres: m.genres })));
+      
       filtered = MovieLensDataService.filterMoviesByGenre(filtered, selectedGenre);
+      
+      console.log('🎭 After genre filter:', {
+        selectedGenre,
+        filteredCount: filtered.length,
+        sampleFiltered: filtered.slice(0, 3).map(m => ({ title: m.title, genres: m.genres }))
+      });
     }
     
     console.log('Filtered results:', {
@@ -138,8 +259,14 @@ export default function ForYou() {
       sampleFiltered: filtered.slice(0, 3).map(m => ({ title: m.title, genres: m.genres }))
     });
     
-    setDisplayMovies(filtered);
-  }, [allMovies, searchTerm, selectedGenre]);
+    // Apply upvote-based re-ranking to filtered results
+    if (upvotedMovies.size > 0) {
+      const personalizedFiltered = reRankMoviesByUpvotes(filtered, upvotedMovies);
+      setDisplayMovies(personalizedFiltered);
+    } else {
+      setDisplayMovies(filtered);
+    }
+  }, [allMovies, searchTerm, selectedGenre, upvotedMovies]);
 
   const handleUpvote = async (movieId: number) => {
     if (!user) {
@@ -169,6 +296,8 @@ export default function ForYou() {
       if (response.ok) {
         const result = await response.json();
         console.log('Interaction sent to Shaped:', result);
+        
+
       }
 
       // Update local state
@@ -190,6 +319,10 @@ export default function ForYou() {
       // Update localStorage
       localStorage.setItem(`movielens_upvotes_${user.uid}`, JSON.stringify(Array.from(newUpvotes)));
 
+      // NEW: Re-rank movies immediately after upvote change
+      const personalizedMovies = reRankMoviesByUpvotes(allMovies, newUpvotes);
+      setDisplayMovies(personalizedMovies);
+
     } catch (error) {
       console.error('Upvote error:', error);
     } finally {
@@ -198,6 +331,51 @@ export default function ForYou() {
         newSet.delete(movieId);
         return newSet;
       });
+    }
+  };
+
+  // Refresh recommendations function
+  const refreshRecommendations = async () => {
+    if (!user || isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      console.log('🔄 Refreshing recommendations from Shaped...');
+      
+      // Get fresh recommendations from Shaped API
+      const recResponse = await fetch('/api/recommendations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.uid
+        })
+      });
+
+      if (recResponse.ok) {
+        const recData = await recResponse.json();
+                  if (recData.success && recData.recommendations && recData.recommendations.length > 0) {
+            // Update recommendations
+            const recommendedIds = new Set(recData.recommendations.map((r: { item_id: string }) => parseInt(r.item_id)));
+            setPersonalizedMovieIds(new Set(Array.from(recommendedIds).map(id => Number(id))));
+            
+            // Apply upvote-based re-ranking to new recommendations
+            const recommendedMovies = allMovies.filter(m => recommendedIds.has(m.id));
+            const otherMovies = allMovies.filter(m => !recommendedIds.has(m.id));
+            
+            const personalizedRecommendedMovies = reRankMoviesByUpvotes(recommendedMovies, upvotedMovies);
+            const personalizedOtherMovies = reRankMoviesByUpvotes(otherMovies, upvotedMovies);
+            
+            setDisplayMovies([...personalizedRecommendedMovies, ...personalizedOtherMovies]);
+          }
+      } else {
+        console.error('❌ Failed to refresh recommendations');
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing recommendations:', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -227,21 +405,43 @@ export default function ForYou() {
           {/* Personalization Status */}
           {user && (
             <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-4 bg-green-100 text-green-800">
-              🎯 AI-Powered Personalization Active
+              🎯 Personalized for You
             </div>
           )}
           
           {/* Personalized Recommendations Summary */}
           {user && personalizedMovieIds.size > 0 && (
             <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-blue-800 text-sm">
-                ✨ Found <strong>{personalizedMovieIds.size}</strong> personalized recommendations based on your upvotes!
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-800 text-sm">
+                    ✨ AI Recommendations
+                  </p>
+                  <p className="text-blue-700 text-xs mt-1">
+                    Movies ranked by Shaped AI based on your preferences
+                  </p>
+                </div>
+
+              </div>
+            </div>
+          )}
+          
+          {/* NEW: Upvote-based personalization explanation */}
+          {user && upvotedMovies.size > 0 && (
+            <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="text-center">
+                <p className="text-purple-800 text-sm">
+                  🎯 <strong>Personalization Active!</strong> You've upvoted {upvotedMovies.size} movies
+                </p>
+                <p className="text-purple-700 text-xs mt-1">
+                  Movies are re-ranked based on your preferences
+                </p>
+              </div>
             </div>
           )}
           
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            💡 Movies are ranked based on your upvotes and preferences from the Discovery page!
+            💡 Movies are ranked based on your preferences and upvotes
           </p>
         </div>
 
@@ -271,15 +471,17 @@ export default function ForYou() {
 
         {/* Movies Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {displayMovies.slice(0, 50).map((movie, index) => {
+          {displayMovies.map((movie, index) => {
             // Check if this movie is in the personalized recommendations
             const isPersonalized = personalizedMovieIds.has(movie.id);
+            // NEW: Check if this movie is upvoted
+            const isUpvoted = upvotedMovies.has(movie.id);
             
             return (
               <MovieCard
                 key={movie.id}
                 movie={movie}
-                isUpvoted={upvotedMovies.has(movie.id)}
+                isUpvoted={isUpvoted}
                 onUpvote={() => handleUpvote(movie.id)}
                 currentUser={user}
                 isLoading={upvoting.has(movie.id)}

@@ -1,27 +1,33 @@
 'use client';
 
 import { Movie } from '@/types/movie';
+import { User } from 'firebase/auth';
 
 interface MovieCardProps {
   movie: Movie;
   isUpvoted: boolean;
   onUpvote: () => void;
-  currentUser: any;
+  currentUser: User | null;
   isLoading?: boolean;
   isPersonalized?: boolean; // New prop to show if this is a personalized recommendation
 }
 
 export function MovieCard({ movie, isUpvoted, onUpvote, currentUser, isLoading = false, isPersonalized = false }: MovieCardProps) {
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow ${isPersonalized ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}>
-      {/* Personalized recommendation indicator */}
-      {isPersonalized && (
-        <div className="flex items-center justify-center mb-2">
+    <div className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow ${isPersonalized ? 'ring-2 ring-blue-500 ring-opacity-50' : ''} ${isUpvoted ? 'ring-2 ring-purple-500 ring-opacity-50' : ''}`}>
+      {/* Personalization indicators */}
+      <div className="flex items-center justify-center mb-2 space-x-2">
+        {isPersonalized && (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            🎯 AI Recommended
+            🎯 Shaped AI Ranked
           </span>
-        </div>
-      )}
+        )}
+        {isUpvoted && (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+            ❤️ You Upvoted
+          </span>
+        )}
+      </div>
 
       <h3 className="font-semibold text-black mb-2 line-clamp-2 text-sm">
         {movie.title}
@@ -48,7 +54,7 @@ export function MovieCard({ movie, isUpvoted, onUpvote, currentUser, isLoading =
           disabled={!currentUser || isLoading}
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             isUpvoted
-              ? 'bg-red-500 hover:bg-red-600 text-white shadow-md'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-md'
               : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-sm'
           } ${!currentUser ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
         >

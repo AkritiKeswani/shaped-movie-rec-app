@@ -150,7 +150,9 @@ export class ShapedAPI {
     }
 
     try {
-      const response = await fetch(`${this.config.baseUrl}/datasets/${this.config.datasetId}/interactions`, {
+      // FIXED: Send interaction to Shaped MODEL (not dataset) for real-time learning
+      // Shaped AI uses the model endpoint for interactions, not dataset endpoint
+      const response = await fetch(`${this.config.baseUrl}/models/${this.config.modelId}/interactions`, {
         method: 'POST',
         headers: {
           'x-api-key': this.config.apiKey,
@@ -352,7 +354,9 @@ export class ShapedClient {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/datasets/${this.datasetId}/interactions`, {
+      // FIXED: Send interaction to Shaped MODEL (not dataset) for real-time learning
+      // Shaped AI uses the model endpoint for interactions, not dataset endpoint
+      const response = await fetch(`${this.baseUrl}/models/${this.modelId}/interactions`, {
         method: 'POST',
         headers: {
           'x-api-key': this.apiKey,  // Fixed: Use x-api-key instead of Authorization

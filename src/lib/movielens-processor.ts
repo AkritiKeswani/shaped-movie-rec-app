@@ -27,7 +27,7 @@ export class MovieLensProcessor {
       const csvText = await response.text();
       const lines = csvText.split('\n');
       
-      // Parse ratings and filter high ratings (≥4.0)
+      // Parse ratings and filter high ratings (≥4.0) - assignment requirement
       const highRatings: MovieLensRating[] = lines.slice(1)
         .filter(line => line.trim())
         .map(line => {
@@ -41,7 +41,7 @@ export class MovieLensProcessor {
         })
         .filter(rating => rating.rating >= 4.0); // Only ratings ≥4.0 count as upvotes
 
-      console.log(`Found ${highRatings.length} high ratings (≥4.0) to send to Shaped`);
+      console.log(`Found ${highRatings.length} high ratings (≥4.0) to send to Shaped as upvotes`);
 
       // Send to Shaped in batches (Shaped might have rate limits)
       const batchSize = 100;
@@ -53,11 +53,11 @@ export class MovieLensProcessor {
         try {
           // Note: Since Shaped doesn't have an interactions endpoint, we'll store this locally
           // In a real implementation, you'd send this to Shaped's dataset
-          console.log(`Processing batch ${Math.floor(i/batchSize) + 1}: ${batch.length} ratings`);
+          console.log(`Processing batch ${Math.floor(i/batchSize) + 1}: ${batch.length} upvotes`);
           
           // For now, just log the high ratings
           batch.forEach(rating => {
-            console.log(`User ${rating.userId} rated movie ${rating.movieId} as ${rating.rating} (upvote)`);
+            console.log(`User ${rating.userId} rated movie ${rating.movieId} as ${rating.rating} (upvote ≥4.0)`);
           });
           
           successCount += batch.length;
@@ -72,14 +72,14 @@ export class MovieLensProcessor {
 
       return {
         success: true,
-        message: `Successfully processed ${successCount} high ratings from MovieLens dataset`
+        message: `Successfully processed ${successCount} high ratings (≥4.0) from MovieLens dataset as upvotes`
       };
 
     } catch (error) {
       console.error('Error processing MovieLens ratings:', error);
       return {
         success: false,
-        message: `Error processing ratings: ${error}`
+        message: `Error processing ratings: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
@@ -102,7 +102,7 @@ export class MovieLensProcessor {
             timestamp
           };
         })
-        .filter(rating => rating.userId === userId && rating.rating >= 4.0);
+        .filter(rating => rating.userId === userId && rating.rating >= 4.0); // Only high ratings count as upvotes
         
     } catch (error) {
       console.error('Error getting user historical ratings:', error);

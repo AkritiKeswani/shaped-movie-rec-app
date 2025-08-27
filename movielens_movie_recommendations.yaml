@@ -1,0 +1,10 @@
+model:
+    name: movielens_movie_recommendation
+connectors:
+    - type: Dataset
+      id: movielens_ratings
+      name: movielens_ratings
+fetch:
+    events: |
+        SELECT user_id, item_id, timestamp AS created_at, rating AS label 
+        FROM movielens_ratings

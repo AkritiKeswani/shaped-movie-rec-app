@@ -199,7 +199,7 @@ export default function Discover() {
 
         {/* Movies Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {filteredMovies.slice(0, 50).map((movie) => (
+          {filteredMovies.map((movie) => (
             <MovieCard
               key={movie.id}
               movie={movie}
@@ -207,6 +207,7 @@ export default function Discover() {
               onUpvote={() => handleUpvote(movie.id)}
               currentUser={user}
               isLoading={upvoting.has(movie.id)}
+              isPersonalized={false}
             />
           ))}
         </div>

@@ -5,54 +5,60 @@ export async function POST(request: NextRequest) {
     const { userId, movieId, rating, timestamp } = await request.json();
 
     if (!userId || !movieId || rating === undefined) {
-      return NextResponse.json(
-        { error: 'Missing required parameters' },
-        { status: 400 }
+      return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
+    }
+
+    // Accept 0 (remove upvote) or >=4 (upvote)
+    if (!(rating === 0 || rating >= 4)) {
+      return NextResponse.json({
+        success: false,
+        message: `Rating ${rating} invalid — must be 0 or ≥4`,
+      }, { status: 400 });
+    }
+
+    // Build event for Shaped (JSONL line) - using your actual dataset schema
+    const event = {
+      user_id: String(userId),
+      item_id: String(movieId),
+      timestamp: String(timestamp ?? Date.now()),
+      rating: String(rating >= 4 ? 5 : 0),
+    };
+
+    let shapedSuccess = false;
+    try {
+      const resp = await fetch(
+        `https://api.shaped.ai/v1/datasets/${process.env.SHAPED_DATASET_ID}/insert`,
+        {
+          method: 'POST',
+          headers: { 
+            'x-api-key': process.env.SHAPED_API_KEY!,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            data: [event] // Wrap in data array as required by Shaped
+          }),
+        }
       );
+      shapedSuccess = resp.ok;
+      if (!resp.ok) {
+        console.warn('Shaped insert failed', resp.status, await resp.text());
+      }
+    } catch (e) {
+      console.warn('Error hitting Shaped insert', e);
     }
 
-    // Send interaction to Shaped dataset for real-time personalization
-    const shapedResponse = await fetch(`https://api.shaped.ai/v1/datasets/${process.env.SHAPED_DATASET_ID}/interactions`, {
-      method: 'POST',
-      headers: {
-        'x-api-key': process.env.SHAPED_API_KEY!,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        item_id: movieId.toString(),
-        rating: rating,
-        timestamp: timestamp || Date.now()
-      })
-    });
-
-    if (shapedResponse.ok) {
-      console.log(`Successfully sent interaction to Shaped: User ${userId} rated movie ${movieId} as ${rating}`);
-      return NextResponse.json({ 
-        success: true,
-        message: `Interaction sent to Shaped AI successfully`,
-        note: 'Your preference has been recorded and will improve future recommendations!'
-      });
-    } else {
-      const errorText = await shapedResponse.text();
-      console.error('Shaped API error:', shapedResponse.status, errorText);
-      
-      // Still return success locally even if Shaped fails
-      return NextResponse.json({ 
-        success: true,
-        message: `Interaction recorded locally`,
-        note: 'Shaped API temporarily unavailable, but your preference was saved locally'
-      });
-    }
-
-  } catch (error) {
-    console.error('Error sending interaction:', error);
-    
-    // Return success even on error to not break user experience
-    return NextResponse.json({ 
+    // Return success with event details
+    const action = rating >= 4 ? 'upvote' : 'un-upvote';
+    return NextResponse.json({
       success: true,
-      message: `Interaction recorded locally`,
-      note: 'Error occurred, but your preference was saved locally'
+      shaped: shapedSuccess,
+      event,
+      note: shapedSuccess 
+        ? `Your ${action} was sent to Shaped for real-time learning!`
+        : `Your ${action} is tracked locally. Check Shaped API configuration.`
     });
+  } catch (e) {
+    console.error('Interactions error', e);
+    return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
   }
 }
