@@ -99,11 +99,11 @@ export async function POST(request: NextRequest) {
         console.log(`🎯 Loaded ${movies.length} movies from u.item file`);
         
         // Create a map that handles both string and number IDs
-        const movieMap = new Map();
-        movies.forEach((movie: any) => {
+        const movieMap = new Map<string, { id: string; title: string; releaseYear?: number; genres: string[] }>();
+        movies.forEach((movie) => {
           movieMap.set(movie.id, movie);
           movieMap.set(movie.id.toString(), movie);
-          movieMap.set(parseInt(movie.id), movie);
+          movieMap.set(parseInt(movie.id).toString(), movie);
         });
         
         // Apply hybrid reranking: combine Shaped scores with upvote boosts

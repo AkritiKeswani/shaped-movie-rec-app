@@ -168,7 +168,7 @@ export default function Discover() {
           </p>
           {user && (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              💡 Upvote movies you like to get personalized recommendations on the "For You" page!
+              💡 Upvote movies you like to get personalized recommendations on the &quot;For You&quot; page!
             </p>
           )}
         </div>
