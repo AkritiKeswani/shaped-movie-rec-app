@@ -35,18 +35,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Set device language for better UX
       auth.useDeviceLanguage();
       await signInWithPopup(auth, googleProvider);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error signing in with Google:', error);
       
       // Handle specific Firebase auth errors
-      if (error.code === 'auth/unauthorized-domain') {
-        setError('This domain is not authorized for OAuth. Please contact support.');
-      } else if (error.code === 'auth/invalid-api-key') {
-        setError('Authentication configuration error. Please contact support.');
-      } else if (error.code === 'auth/operation-not-allowed') {
-        setError('Google sign-in is not enabled. Please contact support.');
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in was cancelled.');
+      if (error && typeof error === 'object' && 'code' in error) {
+        const authError = error as { code: string };
+        if (authError.code === 'auth/unauthorized-domain') {
+          setError('This domain is not authorized for OAuth. Please contact support.');
+        } else if (authError.code === 'auth/invalid-api-key') {
+          setError('Authentication configuration error. Please contact support.');
+        } else if (authError.code === 'auth/operation-not-allowed') {
+          setError('Google sign-in is not enabled. Please contact support.');
+        } else if (authError.code === 'auth/popup-closed-by-user') {
+          setError('Sign-in was cancelled.');
+        } else {
+          setError('Failed to sign in with Google. Please try again.');
+        }
       } else {
         setError('Failed to sign in with Google. Please try again.');
       }
