@@ -20,23 +20,24 @@ export async function POST(request: NextRequest) {
     const event = {
       user_id: String(userId),
       item_id: String(movieId),
-      timestamp: String(timestamp ?? Date.now()),
-      rating: String(rating >= 4 ? 5 : 0),
+      timestamp: Math.floor((timestamp ?? Date.now()) / 1000), // Convert to seconds
+      rating: rating >= 4 ? 5 : 0,
     };
 
     let shapedSuccess = false;
     try {
+      // Correct JSONL format for Shaped dataset_insert
+      const line = JSON.stringify(event) + '\n';
+      
       const resp = await fetch(
-        `https://api.shaped.ai/v1/datasets/${process.env.SHAPED_DATASET_ID}/insert`,
+        `https://api.shaped.ai/v1/datasets/${process.env.SHAPED_DATASET_ID}/dataset_insert`,
         {
           method: 'POST',
           headers: { 
             'x-api-key': process.env.SHAPED_API_KEY!,
-            'Content-Type': 'application/json'
+            // No Content-Type header for JSONL
           },
-          body: JSON.stringify({
-            data: [event] // Wrap in data array as required by Shaped
-          }),
+          body: line, // Single JSONL line
         }
       );
       shapedSuccess = resp.ok;

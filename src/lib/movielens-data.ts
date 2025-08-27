@@ -60,6 +60,51 @@ export class MovieLensDataService {
     }
   }
 
+  // Load movies from movies.csv file with clean genre parsing
+  static async loadMoviesFromCSV(): Promise<MovieLensMovie[]> {
+    try {
+      console.log('🔄 Loading movies from movies.csv file...');
+      
+      const response = await fetch('/movies.csv');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch movies.csv: ${response.status} ${response.statusText}`);
+      }
+      
+      const text = await response.text();
+      const lines = text.split('\n');
+      
+      // Skip header row and filter empty lines
+      const movies = lines
+        .slice(1) // Skip header
+        .filter(line => line.trim())
+        .map((line, index) => {
+          const parts = line.split(',');
+          const id = parts[0];
+          const title = parts[1];
+          const genres = parts[2] ? parts[2].split('|') : ['Unknown'];
+          
+          if (index < 5) { // Only log first 5 movies for debugging
+            console.log(`✅ Movie ${index + 1}: ${title} -> Genres: ${genres.join(', ')}`);
+          }
+          
+          return {
+            id,
+            title,
+            releaseYear: undefined, // movies.csv doesn't have release year
+            genres
+          };
+        });
+      
+      console.log(`🎯 Successfully loaded ${movies.length} movies from CSV with clean genres`);
+      return movies;
+    } catch (error) {
+      console.error('❌ Error loading movies from CSV:', error);
+      // Fallback to u.item if CSV fails
+      console.log('🔄 Falling back to u.item file...');
+      return this.loadMoviesFromItemFile();
+    }
+  }
+
   // Load movies from u.item file with proper genre parsing
   static async loadMoviesFromItemFile(): Promise<MovieLensMovie[]> {
     try {
