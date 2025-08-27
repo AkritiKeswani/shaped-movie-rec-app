@@ -1,27 +1,30 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { AuthProvider } from '@/contexts/AuthContext'
+import type { Metadata } from "next";
+import { Manrope } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from '@/contexts/AuthContext';
 
-const inter = Inter({ subsets: ['latin'] })
+const manrope = Manrope({ 
+  subsets: ["latin"],
+  variable: "--font-manrope",
+});
 
 export const metadata: Metadata = {
-  title: 'MovieLens Recommendations',
-  description: 'Personalized movie recommendations powered by Shaped AI',
-}
+  title: "MovieLens Recommendations - For You",
+  description: "Personalized movie recommendations powered by AI",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${manrope.variable} font-manrope min-h-screen bg-slate-50 dark:bg-slate-900 antialiased`}>
         <AuthProvider>
           {children}
         </AuthProvider>
       </body>
     </html>
-  )
+  );
 }
