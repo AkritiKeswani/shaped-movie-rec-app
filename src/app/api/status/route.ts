@@ -1,59 +1,70 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check if Shaped API is working and model is ready
-    const modelResponse = await fetch('https://api.shaped.ai/v1/models/movielens_movie_recommendation', {
+    const modelResponse = await fetch(`https://api.shaped.ai/v1/models/${process.env.SHAPED_MODEL_ID}`, {
       headers: {
         'x-api-key': process.env.SHAPED_API_KEY!,
       },
     });
 
-    const datasetResponse = await fetch('https://api.shaped.ai/v1/datasets/movielens_ratings', {
+    const datasetResponse = await fetch(`https://api.shaped.ai/v1/datasets/${process.env.SHAPED_DATASET_ID}`, {
       headers: {
         'x-api-key': process.env.SHAPED_API_KEY!,
       },
     });
 
-    let modelInfo = null;
-    let datasetInfo = null;
+    let modelStatus = 'unknown';
+    let datasetStatus = 'unknown';
 
     if (modelResponse.ok) {
-      modelInfo = await modelResponse.json();
+      try {
+        const modelData = await modelResponse.json();
+        modelStatus = modelData.status || 'unknown';
+      } catch (e) {
+        modelStatus = 'error parsing response';
+      }
+    } else {
+      modelStatus = `error: ${modelResponse.status}`;
     }
 
     if (datasetResponse.ok) {
-      datasetInfo = await datasetResponse.json();
+      try {
+        const datasetData = await datasetResponse.json();
+        datasetStatus = datasetData.status || 'unknown';
+      } catch (e) {
+        datasetStatus = 'error parsing response';
+      }
+    } else {
+      datasetStatus = `error: ${datasetResponse.status}`;
     }
 
-    const status = {
-      model: modelInfo ? {
-        name: modelInfo.model_name,
-        status: modelInfo.status,
-        uri: modelInfo.model_uri
-      } : null,
-      dataset: datasetInfo ? {
-        name: datasetInfo.dataset_name,
-        status: datasetInfo.status,
-        schema: datasetInfo.dataset_schema
-      } : null,
+    return NextResponse.json({
+      timestamp: new Date().toISOString(),
+      shaped: {
+        model: {
+          status: modelStatus,
+          url: modelResponse.url,
+        },
+        dataset: {
+          status: datasetStatus,
+          url: datasetResponse.url,
+        },
+      },
       environment: {
         hasApiKey: !!process.env.SHAPED_API_KEY,
         hasModelId: !!process.env.SHAPED_MODEL_ID,
-        hasDatasetId: !!process.env.SHAPED_DATASET_ID
+        hasDatasetId: !!process.env.SHAPED_DATASET_ID,
+        modelId: process.env.SHAPED_MODEL_ID,
+        datasetId: process.env.SHAPED_DATASET_ID,
+        apiKeyLength: process.env.SHAPED_API_KEY ? process.env.SHAPED_API_KEY.length : 0
       }
-    };
-
-    return NextResponse.json(status);
-
+    });
   } catch (error) {
-    console.error('Status check error:', error);
-    return NextResponse.json({ 
-      status: 'error', 
-      details: 'API check failed',
-      error: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    console.error('Error checking Shaped status:', error);
+    return NextResponse.json({ error: 'Failed to check Shaped status' }, { status: 500 });
   }
 }

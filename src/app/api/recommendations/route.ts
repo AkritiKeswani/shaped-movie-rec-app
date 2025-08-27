@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ 
           success: true, 
           recommendations: recommendations,
-          note: `Personalized recommendations from Shaped AI model: movielens_movie_recommendation`
+          note: `Personalized recommendations from Shaped AI model: ${process.env.SHAPED_MODEL_ID || 'unknown'}`
         });
         
       } catch (fileError) {
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ 
           success: true, 
           recommendations: recommendations,
-          note: `Personalized recommendations from Shaped AI model: movielens_movie_recommendation (movie details unavailable)`
+          note: `Personalized recommendations from Shaped AI model: ${process.env.SHAPED_MODEL_ID || 'unknown'} (movie details unavailable)`
         });
       }
     } else {
