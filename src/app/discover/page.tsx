@@ -6,7 +6,7 @@ import { Navigation } from '@/components/Navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { api, APIError } from '@/lib/api';
 import { Movie } from '@/types/movie';
-import { MovieLensDataService } from '@/lib/movielens-data';
+import { MovieLensDataService, MovieLensMovie } from '@/lib/movielens-data';
 
 export default function Discover() {
   const { user } = useAuth();
@@ -62,11 +62,11 @@ export default function Discover() {
     let filtered = movies;
     
     if (searchTerm) {
-      filtered = MovieLensDataService.searchMovies(filtered, searchTerm);
+      filtered = MovieLensDataService.searchMovies(filtered as unknown as MovieLensMovie[], searchTerm) as unknown as Movie[];
     }
     
     if (selectedGenre !== 'all') {
-      filtered = MovieLensDataService.filterMoviesByGenre(filtered, selectedGenre);
+      filtered = MovieLensDataService.filterMoviesByGenre(filtered as unknown as MovieLensMovie[], selectedGenre) as unknown as Movie[];
     }
     
     setFilteredMovies(filtered);

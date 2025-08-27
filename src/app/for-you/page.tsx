@@ -237,14 +237,48 @@ export default function ForYou() {
     });
     
     if (searchTerm) {
-      filtered = MovieLensDataService.searchMovies(filtered, searchTerm);
+      // Convert Movie[] to MovieLensMovie[] for search
+      const movieLensMovies = filtered.map(m => ({
+        id: m.id.toString(),
+        title: m.title,
+        releaseYear: m.releaseDate ? new Date(m.releaseDate).getFullYear() : undefined,
+        genres: m.genres
+      }));
+      const searchResults = MovieLensDataService.searchMovies(movieLensMovies, searchTerm);
+      // Convert back to Movie[]
+      filtered = searchResults.map(m => ({
+        id: parseInt(m.id) || 0,
+        title: m.title,
+        releaseDate: m.releaseYear ? `${m.releaseYear}` : 'Unknown Date',
+        imdbUrl: '',
+        genres: m.genres,
+        rating: 0,
+        upvotes: 0
+      }));
     }
     
     if (selectedGenre !== 'all') {
       console.log('🎭 Filtering by genre:', selectedGenre);
       console.log('🎭 Sample movie genres before filter:', filtered.slice(0, 3).map(m => ({ title: m.title, genres: m.genres })));
       
-      filtered = MovieLensDataService.filterMoviesByGenre(filtered, selectedGenre);
+      // Convert Movie[] to MovieLensMovie[] for genre filtering
+      const movieLensMovies = filtered.map(m => ({
+        id: m.id.toString(),
+        title: m.title,
+        releaseYear: m.releaseDate ? new Date(m.releaseDate).getFullYear() : undefined,
+        genres: m.genres
+      }));
+      const genreResults = MovieLensDataService.filterMoviesByGenre(movieLensMovies, selectedGenre);
+      // Convert back to Movie[]
+      filtered = genreResults.map(m => ({
+        id: parseInt(m.id) || 0,
+        title: m.title,
+        releaseDate: m.releaseYear ? `${m.releaseYear}` : 'Unknown Date',
+        imdbUrl: '',
+        genres: m.genres,
+        rating: 0,
+        upvotes: 0
+      }));
       
       console.log('🎭 After genre filter:', {
         selectedGenre,
@@ -431,7 +465,7 @@ export default function ForYou() {
             <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
               <div className="text-center">
                 <p className="text-purple-800 text-sm">
-                  🎯 <strong>Personalization Active!</strong> You've upvoted {upvotedMovies.size} movies
+                  🎯 <strong>Personalization Active!</strong> You&apos;ve upvoted {upvotedMovies.size} movies
                 </p>
                 <p className="text-purple-700 text-xs mt-1">
                   Movies are re-ranked based on your preferences

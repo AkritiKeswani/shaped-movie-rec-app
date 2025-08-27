@@ -134,7 +134,7 @@ export class MovieLensDataService {
   }
 
   // Get movies by genre
-  static filterMoviesByGenre(movies: any[], genre: string): any[] {
+  static filterMoviesByGenre(movies: MovieLensMovie[], genre: string): MovieLensMovie[] {
     if (genre === 'all') return movies;
     
     console.log('🎭 filterMoviesByGenre called with:', { genre, totalMovies: movies.length });
@@ -153,7 +153,7 @@ export class MovieLensDataService {
   }
 
   // Search movies by title
-  static searchMovies(movies: any[], searchTerm: string): any[] {
+  static searchMovies(movies: MovieLensMovie[], searchTerm: string): MovieLensMovie[] {
     if (!searchTerm) return movies;
     return movies.filter(movie => 
       movie.title.toLowerCase().includes(searchTerm.toLowerCase())

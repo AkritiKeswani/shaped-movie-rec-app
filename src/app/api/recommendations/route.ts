@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         
         // Apply hybrid reranking: combine Shaped scores with upvote boosts
         const recommendations = shapedData.ids.map((id: string, index: number) => {
-          const movie = movieMap.get(id) || movieMap.get(parseInt(id)) || movieMap.get(id.toString());
+          const movie = movieMap.get(id) || movieMap.get(parseInt(id).toString()) || movieMap.get(id.toString());
           const baseScore = shapedData.scores ? shapedData.scores[index] : 1.0;
           
           // Hybrid scoring: Shaped score + upvote boost + genre affinity

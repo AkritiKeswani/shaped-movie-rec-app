@@ -31,7 +31,7 @@ class API {
     }
   }
 
-  async getRecommendations(limit: number = 20): Promise<any> {
+  async getRecommendations(limit: number = 20): Promise<{ success: boolean; recommendations: unknown[] }> {
     try {
       const response = await fetch('/api/recommendations', {
         method: 'POST',
